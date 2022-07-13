@@ -14,5 +14,23 @@ func getOne(id int64) user {
 }
 
 func getBatch(n int64, pool int64) (res []user) {
-	return nil
+	var mutex sync.Mutex
+	var waitingGroup sync.WaitGroup
+	sem := make(chan struct{}, pool)
+
+	for i := int64(0); i < n; i++ {
+		waitingGroup.Add(1)
+		sem <- struct{}{}
+
+		go func(i int64) {
+			user := getOne(i)
+			mutex.Lock()
+			res = append(res, user)
+			mutex.Unlock()
+			<-sem
+			waitingGroup.Done()
+		}(i)
+	}
+	waitingGroup.Wait()
+	return
 }
